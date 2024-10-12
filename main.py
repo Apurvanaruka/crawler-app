@@ -8,17 +8,17 @@ st.set_page_config(page_title='Oncology Journal Article Fetcher & Search', layou
 
 # Initialize Milvus and MySQL managers with error handling
 def initialize_managers():
-    milvus_article_manager = MilvusArticleManager()
+    try:
+        milvus_article_manager = MilvusArticleManager()
+    except Exception as e:
+        st.warning('Milvus is not running. Please start Milvus and refresh the page.')
+        st.stop()
+
+    mysql_article_manager = MySQLArticleManager()
     # try:
     # except Exception as e:
-    #     st.warning('Milvus is not running. Please start Milvus and refresh the page.')
+    #     st.warning('MySQL is not running. Please start MySQL and refresh the page.')
     #     st.stop()
-
-    try:
-        mysql_article_manager = MySQLArticleManager()
-    except Exception as e:
-        st.warning('MySQL is not running. Please start MySQL and refresh the page.')
-        st.stop()
 
     return milvus_article_manager, mysql_article_manager
 
@@ -75,14 +75,22 @@ def main():
         if pdf_file is not None:
             text = extract_text_from_pdf(pdf_file)
             chunks = split_text(text)
-            embeddings = generate_embeddings(chunks)
-            milvus_article_manager.insert_words_embedding(embeddings)
+            for chunk in chunks:
+                mysql_article_manager.insert_words_chunks(chunk)
+                chunk_id = mysql_article_manager.get_chunks_id(chunk)
+                embeddings = generate_embeddings(chunk)
+                milvus_article_manager.insert_words_embedding(chunk_id,embeddings)
 
             query = st.text_input("search query")
             if query != "":
-                search_results = milvus_article_manager.search_document(query)
-                st.write(search_results)
-
+                chunk_ids = milvus_article_manager.search_document(query)
+                st.write(len(chunk_ids))
+                for chunk_id in chunk_ids:
+                    chunk = mysql_article_manager.get_word_chunks_text(chunk_id)
+                    if chunk:
+                        st.write(chunk)
+                st.write(chunk_ids)
+           
 
 if __name__ == "__main__":
     main()

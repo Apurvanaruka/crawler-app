@@ -35,7 +35,7 @@ class MilvusArticleManager:
         # Define the schema for Milvus
         fields = [
             FieldSchema(name="words_embedding", dtype=DataType.FLOAT_VECTOR, dim=384),  # Use the correct dimension of your embedding model
-            FieldSchema(name="id", dtype=DataType.VARCHAR, max_length=36, is_primary=True) 
+            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True)
         ]
         schema = CollectionSchema(fields, "Document Embeddings")
         collection = Collection(name="pdf_embeddings", schema=schema)
@@ -48,10 +48,14 @@ class MilvusArticleManager:
   
 
     # Insert embeddings
-    def insert_words_embedding(self, embeddings):
+    def insert_words_embedding(self, id, embeddings):
         collection = Collection("pdf_embeddings")
-        ids = generate_unique_ids(len(embeddings))
-        collection.insert([ embeddings, ids])
+        # ids = generate_unique_ids(len(embeddings))
+        data = [
+            [embeddings],
+            [id]
+        ]
+        collection.insert(data)
 
     def insert_title_embedding(self, article_id, title_embedding):
         collection = Collection("oncology_articles")
@@ -74,12 +78,13 @@ class MilvusArticleManager:
     
     def search_document(self, query, top_k=5):
         model = SentenceTransformer('all-MiniLM-L6-v2')
-        query_embedding = model.encode([query])
+        query_embedding = model.encode([query]).tolist()
         collection = Collection("pdf_embeddings")
         search_params = {
             "metric_type": "L2",
             "params": {"nprobe": 10}
         }
         results = collection.search(query_embedding, anns_field="words_embedding", param=search_params, limit=10)
+    
         return [result.id for result in results[0]]  # Return article IDs
 

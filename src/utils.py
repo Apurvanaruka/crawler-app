@@ -53,5 +53,5 @@ def generate_unique_ids(num):
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 def generate_embeddings(chunks):
-    embeddings = model.encode(chunks)
+    embeddings = model.encode(chunks).tolist()
     return embeddings
