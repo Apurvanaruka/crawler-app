@@ -2,6 +2,9 @@ import configparser
 import requests
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
+import pdfplumber
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import uuid
 
 
 
@@ -29,3 +32,26 @@ def fetch_articles():
         title_embedding = model.encode(title).tolist()
         # article_id = get_article_id(title, publication_date)
         # insert_title_embedding(article_id, title_embedding)
+
+
+def extract_text_from_pdf(pdf_file):
+    text = ''
+    with pdfplumber.open(pdf_file) as pdf:
+        for page in pdf.pages:
+            text += page.extract_text()
+    return text
+
+def split_text(text, chunk_size=500, chunk_overlap=100):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    chunks = text_splitter.split_text(text)
+    return chunks
+
+# Function to generate UUIDs
+def generate_unique_ids(num):
+    return [str(uuid.uuid4()) for _ in range(num)]
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+def generate_embeddings(chunks):
+    embeddings = model.encode(chunks)
+    return embeddings

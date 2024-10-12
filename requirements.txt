@@ -5,3 +5,5 @@ mysql-connector-python
 sentence-transformers
 pymilvus
 configparser
+pdfplumber
+langchain

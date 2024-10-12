@@ -1,16 +1,18 @@
 import streamlit as st
 from src.database import MySQLArticleManager
 from src.milvus import MilvusArticleManager
+from src.utils import *
+
 
 st.set_page_config(page_title='Oncology Journal Article Fetcher & Search', layout='wide')
 
 # Initialize Milvus and MySQL managers with error handling
 def initialize_managers():
-    try:
-        milvus_article_manager = MilvusArticleManager()
-    except Exception as e:
-        st.warning('Milvus is not running. Please start Milvus and refresh the page.')
-        st.stop()
+    milvus_article_manager = MilvusArticleManager()
+    # try:
+    # except Exception as e:
+    #     st.warning('Milvus is not running. Please start Milvus and refresh the page.')
+    #     st.stop()
 
     try:
         mysql_article_manager = MySQLArticleManager()
@@ -30,7 +32,7 @@ def main():
 
     # Sidebar for navigation
     st.sidebar.header('Navigation')
-    app_mode = st.sidebar.selectbox("Choose an option:", ["Search Articles","Fetch Articles"])
+    app_mode = st.sidebar.selectbox("Choose an option:", ["Search Articles", "Upload Document","Fetch Articles"])
 
     if app_mode == "Fetch Articles":
         st.subheader('Fetch Latest Articles')
@@ -67,6 +69,20 @@ def main():
                     st.warning('No articles found for the given query.')
             else:
                 st.warning('Please enter a query!')
+
+    elif app_mode == "Upload Document":
+        pdf_file = st.file_uploader("Upload PDF file.")
+        if pdf_file is not None:
+            text = extract_text_from_pdf(pdf_file)
+            chunks = split_text(text)
+            embeddings = generate_embeddings(chunks)
+            milvus_article_manager.insert_words_embedding(embeddings)
+
+            query = st.text_input("search query")
+            if query != "":
+                search_results = milvus_article_manager.search_document(query)
+                st.write(search_results)
+
 
 if __name__ == "__main__":
     main()
