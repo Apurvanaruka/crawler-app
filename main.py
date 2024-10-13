@@ -1,6 +1,8 @@
 import streamlit as st
 from src.database import MySQLArticleManager
 from src.milvus import MilvusArticleManager
+from src.utils import *
+
 
 st.set_page_config(page_title='Oncology Journal Article Fetcher & Search', layout='wide')
 
@@ -12,11 +14,11 @@ def initialize_managers():
         st.warning('Milvus is not running. Please start Milvus and refresh the page.')
         st.stop()
 
-    try:
-        mysql_article_manager = MySQLArticleManager()
-    except Exception as e:
-        st.warning('MySQL is not running. Please start MySQL and refresh the page.')
-        st.stop()
+    mysql_article_manager = MySQLArticleManager()
+    # try:
+    # except Exception as e:
+    #     st.warning('MySQL is not running. Please start MySQL and refresh the page.')
+    #     st.stop()
 
     return milvus_article_manager, mysql_article_manager
 
@@ -30,7 +32,7 @@ def main():
 
     # Sidebar for navigation
     st.sidebar.header('Navigation')
-    app_mode = st.sidebar.selectbox("Choose an option:", ["Search Articles","Fetch Articles"])
+    app_mode = st.sidebar.selectbox("Choose an option:", ["Search Articles", "Upload Document","Fetch Articles"])
 
     if app_mode == "Fetch Articles":
         st.subheader('Fetch Latest Articles')
@@ -67,6 +69,28 @@ def main():
                     st.warning('No articles found for the given query.')
             else:
                 st.warning('Please enter a query!')
+
+    elif app_mode == "Upload Document":
+        pdf_file = st.file_uploader("Upload PDF file.")
+        if pdf_file is not None:
+            text = extract_text_from_pdf(pdf_file)
+            chunks = split_text(text)
+            for chunk in chunks:
+                mysql_article_manager.insert_words_chunks(chunk)
+                chunk_id = mysql_article_manager.get_chunks_id(chunk)
+                embeddings = generate_embeddings(chunk)
+                milvus_article_manager.insert_words_embedding(chunk_id,embeddings)
+
+            query = st.text_input("search query")
+            if query != "":
+                chunk_ids = milvus_article_manager.search_document(query)
+                st.write(len(chunk_ids))
+                for chunk_id in chunk_ids:
+                    chunk = mysql_article_manager.get_word_chunks_text(chunk_id)
+                    if chunk:
+                        st.write(chunk)
+                st.write(chunk_ids)
+           
 
 if __name__ == "__main__":
     main()
