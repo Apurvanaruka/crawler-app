@@ -1,28 +1,23 @@
-import mysql.connector
+import sqlite3
 from src.utils import load_config
 from datetime import datetime
 
-class MySQLArticleManager:
+class SQLiteArticleManager:
     def __init__(self):
-        config = load_config()
-        self.mysql_config = {
-            'user': config['mysql']['user'],
-            'password': config['mysql']['password'],
-            'host': config['mysql']['host'],
-            'database': config['mysql']['database'],
-        }
+        self.db_path = 'sqlite.db'  # Hardcoded path to the SQLite database file
         self.connect()
+        self.create_article_table()
         self.create_document_table()
 
     def connect(self):
-        return mysql.connector.connect(**self.mysql_config)
+        return sqlite3.connect(self.db_path)
 
-    def create_mysql_table(self):
+    def create_article_table(self):
         with self.connect() as db:
             cursor = db.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS articles (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT,
                     author TEXT,
                     publication_date DATE,
@@ -36,7 +31,7 @@ class MySQLArticleManager:
             cursor = db.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS word_chunks (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     chunks TEXT
                 )
             """)
@@ -48,7 +43,7 @@ class MySQLArticleManager:
             cursor = db.cursor()
             cursor.execute("""
                 INSERT INTO articles (title, author, publication_date, abstract)
-                VALUES (%s, %s, %s, %s)
+                VALUES (?, ?, ?, ?)
             """, (title, author, pub_date, abstract))
             db.commit()
         
@@ -57,16 +52,16 @@ class MySQLArticleManager:
             cursor = db.cursor()
             cursor.execute("""
                 INSERT INTO word_chunks (chunks)
-                VALUES (%s)
-            """, ([chunk]))
+                VALUES (?)
+            """, (chunk,))
             db.commit()
 
     def get_word_chunks_text(self, chunks_id):
         with self.connect() as db:
             cursor = db.cursor()
             cursor.execute("""
-                SELECT chunks FROM word_chunks WHERE id = %s
-            """, ([chunks_id]))
+                SELECT chunks FROM word_chunks WHERE id = ?
+            """, (chunks_id,))
             result = cursor.fetchall()
         return result        
 
@@ -75,7 +70,7 @@ class MySQLArticleManager:
         with self.connect() as db:
             cursor = db.cursor()
             cursor.execute("""
-                SELECT title, author, publication_date, abstract FROM articles WHERE id = %s
+                SELECT title, author, publication_date, abstract FROM articles WHERE id = ?
             """, (article_id,))
             result = cursor.fetchone()
         return result
@@ -84,8 +79,8 @@ class MySQLArticleManager:
         with self.connect() as db:
             cursor = db.cursor()
             cursor.execute("""
-                SELECT id FROM word_chunks WHERE chunks = %s 
-            """, ([chunks]))
+                SELECT id FROM word_chunks WHERE chunks = ? 
+            """, (chunks,))
             result = cursor.fetchone()
         return result[0] if result else None
   
@@ -93,12 +88,12 @@ class MySQLArticleManager:
         with self.connect() as db:
             cursor = db.cursor()
             cursor.execute("""
-                SELECT id FROM articles WHERE title = %s AND publication_date = %s
+                SELECT id FROM articles WHERE title = ? AND publication_date = ?
             """, (title, publication_date))
             result = cursor.fetchone()
         return result[0] if result else None
 
 # Example usage:
-# article_manager = MySQLArticleManager()
+# article_manager = SQLiteArticleManager()
 # details = article_manager.get_article_details(1)
 # print(details)

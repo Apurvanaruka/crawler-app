@@ -1,5 +1,5 @@
 import streamlit as st
-from src.database import MySQLArticleManager
+from src.database import SQLiteArticleManager
 from src.milvus import MilvusArticleManager
 from src.utils import *
 
@@ -14,7 +14,7 @@ def initialize_managers():
         st.warning('Milvus is not running. Please start Milvus and refresh the page.')
         st.stop()
 
-    mysql_article_manager = MySQLArticleManager()
+    mysql_article_manager = SQLiteArticleManager()
     # try:
     # except Exception as e:
     #     st.warning('MySQL is not running. Please start MySQL and refresh the page.')
